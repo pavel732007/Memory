@@ -1,33 +1,37 @@
 export class Logic {
-  private playingFieldElement;
+  private playingFieldElement: HTMLElement | null;
   private gameStart4Element: HTMLButtonElement | null;
-  private gameTimerElement;
-  private movesElement;
-  private endElement;
-  private recordElement;
+  private gameTimerElement: HTMLElement | null;
+  private movesElement: HTMLElement | null;
+  private endElement: HTMLElement | null;
+  private recordElement: HTMLElement | null;
 
-  private arrayField: string[] = [];
+  private arrayField: DOMStringMap[] = [];
   private coincidences: number[] = [];
   private chosen: number[] = [];
   private moves = 0;
 
   private timer = 299;
+  private timerId: number | null = null;
   private attempts = 2;
 
   constructor() {
-    this.playingFieldElement = document.querySelector(".hero");
-    this.gameStart4Element = document.querySelector("#gameStart4");
-    this.gameTimerElement = document.querySelector("#timer");
-    this.movesElement = document.querySelector("#moves");
-    this.endElement = document.querySelector("#end");
-    this.recordElement = document.querySelector("#record");
+    this.playingFieldElement = document.querySelector<HTMLElement>(".hero");
+    this.gameStart4Element =
+      document.querySelector<HTMLButtonElement>("#gameStart4");
+    this.gameTimerElement = document.querySelector<HTMLElement>("#timer");
+    this.movesElement = document.querySelector<HTMLElement>("#moves");
+    this.endElement = document.querySelector<HTMLElement>("#end");
+    this.recordElement = document.querySelector<HTMLElement>("#record");
 
     this.gameStart4Element?.addEventListener("click", () => this.startGame4());
 
     document.addEventListener("DOMContentLoaded", () => {
-      this.recordElement.textContent =
-        `Рекорд: ${!localStorage.getItem("timer") ? 0 : localStorage.getItem("timer")} сек, за 
-        ${!localStorage.getItem("moves") ? 0 : localStorage.getItem("moves")} ходов`;
+      if (!this.recordElement) return;
+
+      this.recordElement.textContent = `Рекорд: ${
+        localStorage.getItem("timer") ?? 0
+      } сек, за ${localStorage.getItem("moves") ?? 0} ходов`;
     });
   }
 
@@ -53,8 +57,8 @@ export class Logic {
     }
 
     for (let i = 0; i < 16; i++) {
-      result += `<div class="field" data-id="${combined[i]}" data-choose="false" data-right="false"> 
-            <img src="/icons/${combined[i]}.svg" alt="game"> 
+      result += `<div class="field" data-id="${combined[i]}" data-choose="false" data-right="false">
+            <img src="${import.meta.env.BASE_URL}icons/${combined[i]}.svg" alt="game">
         </div>`;
     }
 
@@ -63,22 +67,19 @@ export class Logic {
 
   private startGame4() {
     const field = this.playingFieldElement;
-
-    if (!this.playingFieldElement || !this.gameStart4Element) return null;
-    if (!field) return null;
+    if (!field || !this.gameStart4Element) return null;
 
     field.style.pointerEvents = "auto";
-
     this.gameStart4Element.disabled = true;
 
-    this.playingFieldElement.innerHTML = this.fieldRandom();
+    field.innerHTML = this.fieldRandom();
     this.timerStart();
 
     for (let i = 0; i < 16; i++) {
-      this.arrayField.push(this.playingFieldElement.children[i].dataset);
-      this.playingFieldElement.children[i].addEventListener("click", () =>
-        this.checkingPairs(i)
-      );
+      const card = field.children[i] as HTMLElement;
+
+      this.arrayField.push(card.dataset);
+      card.addEventListener("click", () => this.checkingPairs(i));
     }
   }
 
@@ -94,14 +95,17 @@ export class Logic {
     el.style.setProperty("--overlay-opacity", "0");
     el.dataset.choose = "true";
 
-    this.coincidences.push(el.dataset.id);
+    this.coincidences.push(Number(el.dataset.id));
     this.chosen.push(index);
     this.attempts--;
 
     if (this.attempts === 0) {
       field.style.pointerEvents = "none";
       this.moves++;
-      this.movesElement.textContent = `Ходов: ${this.moves}`;
+
+      if (this.movesElement) {
+        this.movesElement.textContent = `Ходов: ${this.moves}`;
+      }
 
       const first = field.children[this.chosen[0]] as HTMLElement;
       const second = field.children[this.chosen[1]] as HTMLElement;
@@ -113,7 +117,7 @@ export class Logic {
         first.style.setProperty("pointer-events", "none");
         second.style.setProperty("pointer-events", "none");
 
-        let rs = this.examination();
+        const rs = this.examination();
         if (rs) {
           this.endGame(true);
           return;
@@ -143,7 +147,7 @@ export class Logic {
     const el = this.playingFieldElement.children;
 
     for (let i = 0; i < el.length; i++) {
-      if (el[i].dataset.right === "false") {
+      if ((el[i] as HTMLElement).dataset.right === "false") {
         return false;
       }
     }
@@ -152,32 +156,40 @@ export class Logic {
   }
 
   private timerStart() {
-    setInterval(() => {
-      if (!this.gameTimerElement) return null;
+    this.timerId = window.setInterval(() => {
+      if (!this.gameTimerElement) return;
 
       const min = Math.floor(this.timer / 60);
-      const sec = this.timer % 60;
+      const sec = String(this.timer % 60).padStart(2, "0");
 
       this.gameTimerElement.textContent = `Таймер: ${min}:${sec}`;
 
       if (this.timer === 0) {
         this.endGame(false);
-        return null;
+        return;
       }
 
       this.timer--;
     }, 1000);
   }
 
-  private endGame(state) {
+  private endGame(state: boolean) {
     const field = this.playingFieldElement;
     if (!field) return null;
+
+    if (this.timerId !== null) {
+      clearInterval(this.timerId);
+      this.timerId = null;
+    }
+
     field.style.pointerEvents = "none";
+
+    if (!this.endElement) return null;
 
     if (state) {
       this.endElement.textContent = `Вы выграли за ${300 - this.timer} секунд и ${this.moves} ходов`;
-      localStorage.setItem("moves", this.moves);
-      localStorage.setItem("timer", 300 - this.timer);
+      localStorage.setItem("moves", String(this.moves));
+      localStorage.setItem("timer", String(300 - this.timer));
     } else {
       this.endElement.textContent = `Вы проиграли`;
     }
