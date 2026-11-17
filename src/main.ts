@@ -11,8 +11,8 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 
   <div id="btns">
     <button id="gameStart4">Игра 4×4</button>
-    <button id="gameStart6" disabled>Игра 6×6</button>
-    <button id="gameStop" disabled>Играть снова</button>
+    <button id="gameStart6">Игра 6×6</button>
+    <button id="gameReset" disabled>Играть снова</button>
   </div>
 
   <p id="moves">Ходов: 0</p>

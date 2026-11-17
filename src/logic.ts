@@ -1,6 +1,8 @@
 export class Logic {
   private playingFieldElement: HTMLElement | null;
   private gameStart4Element: HTMLButtonElement | null;
+  private gameStart6Element: HTMLButtonElement | null;
+  private gameResetElement: HTMLButtonElement | null;
   private gameTimerElement: HTMLElement | null;
   private movesElement: HTMLElement | null;
   private endElement: HTMLElement | null;
@@ -10,7 +12,6 @@ export class Logic {
   private coincidences: number[] = [];
   private chosen: number[] = [];
   private moves = 0;
-
   private timer = 299;
   private timerId: number | null = null;
   private attempts = 2;
@@ -19,12 +20,20 @@ export class Logic {
     this.playingFieldElement = document.querySelector<HTMLElement>(".hero");
     this.gameStart4Element =
       document.querySelector<HTMLButtonElement>("#gameStart4");
+    this.gameStart6Element =
+      document.querySelector<HTMLButtonElement>("#gameStart6");
     this.gameTimerElement = document.querySelector<HTMLElement>("#timer");
     this.movesElement = document.querySelector<HTMLElement>("#moves");
     this.endElement = document.querySelector<HTMLElement>("#end");
     this.recordElement = document.querySelector<HTMLElement>("#record");
+    this.gameResetElement =
+      document.querySelector<HTMLButtonElement>("#gameReset");
 
-    this.gameStart4Element?.addEventListener("click", () => this.startGame4());
+    this.gameStart4Element?.addEventListener("click", () => this.startGame(4));
+    this.gameStart6Element?.addEventListener("click", () => this.startGame(6));
+    this.gameResetElement?.addEventListener("click", () => {
+      location.reload();
+    });
 
     document.addEventListener("DOMContentLoaded", () => {
       if (!this.recordElement) return;
@@ -35,9 +44,19 @@ export class Logic {
     });
   }
 
-  private fieldRandom(): string {
-    const numbers = [1, 2, 3, 4, 5, 6, 7, 8];
-    const numbers2 = [1, 2, 3, 4, 5, 6, 7, 8];
+  private fieldRandom(game: 4 | 6): string {
+    let numbers: number[];
+    let numbers2: number[];
+    if (game === 4) {
+      numbers = [1, 2, 3, 4, 5, 6, 7, 8];
+      numbers2 = [1, 2, 3, 4, 5, 6, 7, 8];
+    } else {
+      numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+      numbers2 = [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18
+      ];
+    }
+
     let result = ``;
 
     for (let i = numbers.length - 1; i > 0; i--) {
@@ -56,7 +75,7 @@ export class Logic {
       [combined[i], combined[j]] = [combined[j], combined[i]];
     }
 
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < game * game; i++) {
       result += `<div class="field" data-id="${combined[i]}" data-choose="false" data-right="false">
             <img src="${import.meta.env.BASE_URL}icons/${combined[i]}.svg" alt="game">
         </div>`;
@@ -65,17 +84,25 @@ export class Logic {
     return result;
   }
 
-  private startGame4() {
+  private startGame(game: 4 | 6) {
     const field = this.playingFieldElement;
-    if (!field || !this.gameStart4Element) return null;
+    if (!field || !this.gameStart4Element || !this.gameStart6Element)
+      return null;
 
     field.style.pointerEvents = "auto";
     this.gameStart4Element.disabled = true;
+    this.gameStart6Element.disabled = true;
 
-    field.innerHTML = this.fieldRandom();
+    if (game === 4) {
+      field.innerHTML = this.fieldRandom(4);
+    } else {
+      field.innerHTML = this.fieldRandom(6);
+      this.playingFieldElement?.classList.add("l6x6");
+    }
+
     this.timerStart();
 
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < game * game; i++) {
       const card = field.children[i] as HTMLElement;
 
       this.arrayField.push(card.dataset);
@@ -89,7 +116,6 @@ export class Logic {
 
     const el = field.children[index] as HTMLElement;
 
-    // повторный клик по той же игнорируем
     if (el.dataset.choose === "true") return null;
 
     el.style.setProperty("--overlay-opacity", "0");
@@ -142,8 +168,8 @@ export class Logic {
     }
   }
 
-  private examination() {
-    if (!this.playingFieldElement) return null;
+  private examination(): boolean {
+    if (!this.playingFieldElement) return false;
     const el = this.playingFieldElement.children;
 
     for (let i = 0; i < el.length; i++) {
@@ -157,7 +183,7 @@ export class Logic {
 
   private timerStart() {
     this.timerId = window.setInterval(() => {
-      if (!this.gameTimerElement) return;
+      if (!this.gameTimerElement) return null;
 
       const min = Math.floor(this.timer / 60);
       const sec = String(this.timer % 60).padStart(2, "0");
@@ -175,21 +201,33 @@ export class Logic {
 
   private endGame(state: boolean) {
     const field = this.playingFieldElement;
+
     if (!field) return null;
+    if (!this.endElement) return null;
+    if (!this.gameResetElement) return null;
 
     if (this.timerId !== null) {
       clearInterval(this.timerId);
-      this.timerId = null;
+      this.timerId = 299;
     }
+
+    this.gameResetElement.disabled = false;
 
     field.style.pointerEvents = "none";
 
-    if (!this.endElement) return null;
-
     if (state) {
       this.endElement.textContent = `Вы выграли за ${300 - this.timer} секунд и ${this.moves} ходов`;
-      localStorage.setItem("moves", String(this.moves));
-      localStorage.setItem("timer", String(300 - this.timer));
+      let timerComparison = localStorage.getItem("timer");
+
+      if (timerComparison) {
+        if (+timerComparison > 300 - this.timer) {
+          localStorage.setItem("moves", String(this.moves));
+          localStorage.setItem("timer", String(300 - this.timer));
+        }
+      } else {
+        localStorage.setItem("moves", String(this.moves));
+        localStorage.setItem("timer", String(300 - this.timer));
+      }
     } else {
       this.endElement.textContent = `Вы проиграли`;
     }

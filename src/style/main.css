@@ -21,6 +21,10 @@ body {
     grid-template-columns: repeat(4, 1fr);
     background: var(--color-bg);
     gap: 0.5rem;
+
+    &.l6x6 {
+        grid-template-columns: repeat(6, 1fr);
+    }
 }
 
 #btns {
@@ -43,7 +47,7 @@ button {
     border: 0.3rem solid var(--color-accent);
     border-radius: 1rem;
     transition-duration: 0.4s;
-    --overlay-opacity: 1;
+    --overlay-opacity: 0.5;
 
     & img {
         display: block;
